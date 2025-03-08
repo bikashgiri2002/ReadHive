@@ -18,22 +18,55 @@ router.post("/login", (req, res) => {
   return res.status(401).json({ message: "Invalid credentials" });
 });
 
-// Add a new student (Admin only)
-router.post("/students", auth, async (req, res) => {
+// Get all students (Admin only)
+router.get("/students", auth, async (req, res) => {
   try {
     if (req.user.role !== "admin") return res.status(403).json({ message: "Access denied" });
 
+    // Fetch all students
+    const students = await User.find({ role: "student" }).select("-password").lean(); // Exclude password
+
+    // Fetch borrow details for each student
+    for (let student of students) {
+      const borrows = await Borrow.find({ studentId: student._id, returnStatus: false })
+        .populate("bookId", "title author"); // Include book details
+
+      student.borrowedBooks = borrows; // Attach borrowed books to student object
+    }
+
+    res.json(students);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching students", error });
+  }
+});
+
+// Add a new student (Admin only)
+router.post("/students", auth, async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
     const { name, email, password, department, regdNo } = req.body;
+
+    // 🔍 Check if email already exists
+    const existingStudent = await User.findOne({ email });
+    if (existingStudent) {
+      return res.status(400).json({ message: "Student with this email already exists" });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const student = new User({ name, email, password: hashedPassword, department, regdNo, role: "student" });
-    
     await student.save();
+
     res.json({ message: "Student added successfully", student });
   } catch (error) {
+    console.error("Error adding student:", error);
     res.status(500).json({ message: "Error adding student", error });
   }
 });
+
+
 
 // Add a new book (Admin only)
 router.post("/books", auth, async (req, res) => {
