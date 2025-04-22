@@ -1,10 +1,10 @@
 const express = require("express");
-const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Book = require("../models/Book");
 const Borrow = require("../models/Borrow");
 const auth = require("../middleware/auth");
+const { sendConfirmationEmail } = require("../utils/emailService");
 
 const router = express.Router();
 
@@ -55,9 +55,9 @@ router.post("/students", auth, async (req, res) => {
       return res.status(400).json({ message: "Student with this email already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const student = new User({ name, email, password: hashedPassword, department, regdNo, role: "student" });
+    const student = new User({ name, email, password, department, regdNo, role: "student" });
     await student.save();
+    await sendConfirmationEmail(email, name, email, password); 
 
     res.json({ message: "Student added successfully", student });
   } catch (error) {

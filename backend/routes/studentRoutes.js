@@ -1,5 +1,4 @@
 const express = require("express");
-const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Borrow = require("../models/Borrow");
@@ -18,7 +17,7 @@ router.post("/login", async (req, res) => {
     if (!student) return res.status(404).json({ message: "Student not found" });
 
     // Check password
-    const isMatch = await bcrypt.compare(password, student.password);
+    const isMatch = password === student.password;
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
     // Generate token
